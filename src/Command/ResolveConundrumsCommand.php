@@ -18,6 +18,7 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ResolveConundrumsCommand extends Command
 {
     private string $day;
+    private bool $testMode;
 
     protected function configure(): void
     {
@@ -30,6 +31,7 @@ class ResolveConundrumsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->day = $input->getArgument('day');
+        $this->testMode = $input->getOption('with-test-input');
 
         $io = new SymfonyStyle($input, $output);
 
@@ -37,7 +39,7 @@ class ResolveConundrumsCommand extends Command
             // Solve
             /** @var AbstractConundrumSolver $conundrumSolver */
             $conundrumSolver = $this->getSolverForDay();
-            $result = $conundrumSolver->execute($input->getOption('with-test-input'));
+            $result = $conundrumSolver->execute($this->testMode);
 
             // Display results
             $result = $this->formatResultForDisplay($result);
@@ -48,9 +50,16 @@ class ResolveConundrumsCommand extends Command
 
             $io->text([
                 sprintf(
-                    '<christmas_red>%s</>',
+                    '<christmas_red%s>%s</>',
+                    $this->testMode ? '_test' : '',
                     str_pad(
-                        strtoupper(sprintf(' December %s, 2023 ', $this->day)),
+                        strtoupper(
+                            sprintf(
+                                '%s December %s, 2023 ',
+                                $this->testMode ? ' // TEST //' : '',
+                                $this->day,
+                            )
+                        ),
                         Helper::width(Helper::removeDecoration($io->getFormatter(), $result)),
                         ' '
                     )
@@ -105,14 +114,13 @@ class ResolveConundrumsCommand extends Command
         $line = explode('|', ' Solution | to | part | one | is | %s | and | solution | to | part | two | is | %s |.');
 
         array_walk($line, function (&$word, $key) {
-            $format = '<christmas_';
-            $format .= match (true) {
-                str_contains($word, '%s') => 'green>',
-                !($key & 1) => 'red>',
-                default => 'white>',
+            $color = match (true) {
+                str_contains($word, '%s') => 'green' . ($this->testMode ? '_test' : ''),
+                !($key & 1) => 'red' . ($this->testMode ? '_test' : ''),
+                default => 'white',
             };
 
-            $word = sprintf('%s%s</>', $format, $word);
+            $word = sprintf('<christmas_%s>%s</>', $color, $word);
         });
 
         return '<christmas_white> 🎄 </>' . sprintf(implode('', $line), ...$result) . '<christmas_white> 🎄 </>';

@@ -19,6 +19,8 @@ $formatter = new OutputFormatter(false, [
     'christmas_red'   => new OutputFormatterStyle(null, 'bright-red'),
     'christmas_white' => new OutputFormatterStyle('black', 'bright-white'),
     'christmas_green' => new OutputFormatterStyle(null, 'green'),
+    'christmas_red_test'   => new OutputFormatterStyle(null, 'bright-blue'),
+    'christmas_green_test' => new OutputFormatterStyle(null, 'bright-yellow'),
 ]);
 $output = new ConsoleOutput(OutputInterface::VERBOSITY_NORMAL, null, $formatter);
 

@@ -80,6 +80,10 @@ class Day02ConundrumSolver extends AbstractConundrumSolver
         return $sum;
     }
 
+    ////////////////
+    // METHODS
+    ////////////////
+
     private function getGame(string $input): string
     {
         return preg_replace('/Game\s(\d+): /', '', $input);

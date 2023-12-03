@@ -29,4 +29,8 @@ class ExampleConundrumSolver extends AbstractConundrumSolver
     {
         return parent::partTwo();
     }
+
+    ////////////////
+    // METHODS
+    ////////////////
 }

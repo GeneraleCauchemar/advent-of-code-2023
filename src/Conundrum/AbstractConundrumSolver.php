@@ -37,11 +37,16 @@ abstract class AbstractConundrumSolver implements ConundrumSolverInterface
         $this->testMode = $testMode;
 
         $this->init();
+        $this->prepare();
 
         return [
             $this->partOne(),
             $this->partTwo(),
         ];
+    }
+
+    public function prepare(): void
+    {
     }
 
     public function partOne(): mixed

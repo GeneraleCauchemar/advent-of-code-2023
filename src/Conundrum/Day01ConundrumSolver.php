@@ -72,6 +72,10 @@ class Day01ConundrumSolver extends AbstractConundrumSolver
         return $this->sum;
     }
 
+    ////////////////
+    // METHODS
+    ////////////////
+
     private function findPlainTextDigits(string $input): array
     {
         $digits = [];

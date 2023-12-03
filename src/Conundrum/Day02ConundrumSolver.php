@@ -16,9 +16,35 @@ class Day02ConundrumSolver extends AbstractConundrumSolver
         self::BLUE  => 14,
     ];
 
+    private array $validGames = [];
+    private int $powerSum = 0;
+
     public function __construct(string $folder)
     {
         parent::__construct($folder);
+    }
+
+    public function prepare(): void
+    {
+        foreach ($this->getInput() as $line) {
+            $hasImpossibleDraws = false;
+            $minCubes = array_fill_keys([self::RED, self::GREEN, self::BLUE], 0);
+
+            foreach ($this->getDraws($line) as $draw) {
+                $this->computeDraw($draw, $hasImpossibleDraws, $minCubes);
+            }
+
+            // Keeping track of the impossible games IDs
+            if (!$hasImpossibleDraws) {
+                preg_match('/\s(\d+):/', $line, $matches);
+
+                $this->validGames[] = (int) $matches[1];
+            }
+
+            // Removing the empty colors and adding the power to the total sum
+            $minCubes = array_filter($minCubes);
+            $this->powerSum += array_product($minCubes);
+        }
     }
 
     ////////////////
@@ -27,27 +53,7 @@ class Day02ConundrumSolver extends AbstractConundrumSolver
 
     public function partOne(): mixed
     {
-        $valid = [];
-
-        foreach ($this->getInput() as $line) {
-            $invalidSubsets = [];
-
-            foreach ($this->getSubsets($line) as $subset) {
-                $invalidSubsets[] = array_filter(explode(', ', $subset), function (string $cubes) {
-                    [$number, $color] = explode(' ', $cubes);
-
-                    return self::AVAILABLE_CUBES[$color] < (int) $number;
-                });
-            }
-
-            if (empty(array_filter($invalidSubsets))) {
-                preg_match('/\s(\d+):/', $line, $matches);
-
-                $valid[] = (int) $matches[1];
-            }
-        }
-
-        return array_sum($valid);
+        return array_sum($this->validGames);
     }
 
     ////////////////
@@ -56,41 +62,37 @@ class Day02ConundrumSolver extends AbstractConundrumSolver
 
     public function partTwo(): mixed
     {
-        $sum = 0;
-
-        foreach ($this->getInput() as $line) {
-            $subsets = $this->getSubsets($line);
-            $minCubes = array_fill_keys([self::RED, self::GREEN, self::BLUE], 0);
-
-            foreach ($subsets as $subset) {
-                array_map(function ($cubes) use (&$minCubes) {
-                    [$number, $color] = explode(' ', $cubes);
-
-                    if ($minCubes[$color] < (int) $number) {
-                        $minCubes[$color] = (int) $number;
-                    }
-                }, explode(', ', $subset));
-            }
-
-            // Removing the empty colors and adding the power to the total sum
-            $minCubes = array_filter($minCubes);
-            $sum += array_product($minCubes);
-        }
-
-        return $sum;
+        return $this->powerSum;
     }
 
     ////////////////
     // METHODS
     ////////////////
 
+    private function getDraws(string $input): array
+    {
+        return explode('; ', $this->getGame($input));
+    }
+
     private function getGame(string $input): string
     {
         return preg_replace('/Game\s(\d+): /', '', $input);
     }
 
-    private function getSubsets(string $input): array
+    private function computeDraw(string $draw, bool &$hasImpossibleDraws, array &$minCubes): void
     {
-        return explode('; ', $this->getGame($input));
+        array_map(function ($cubes) use (&$hasImpossibleDraws, &$minCubes) {
+            [$number, $color] = explode(' ', $cubes);
+
+            // More cubes of this color than available: impossible draw
+            if (self::AVAILABLE_CUBES[$color] < (int) $number) {
+                $hasImpossibleDraws = true;
+            }
+
+            // Min cubes of this color needed to make the draw possible
+            if ($minCubes[$color] < (int) $number) {
+                $minCubes[$color] = (int) $number;
+            }
+        }, explode(', ', $draw));
     }
 }

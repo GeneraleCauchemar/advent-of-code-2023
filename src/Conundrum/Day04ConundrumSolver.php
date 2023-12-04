@@ -8,6 +8,7 @@ namespace App\Conundrum;
 class Day04ConundrumSolver extends AbstractConundrumSolver
 {
     private int $points = 0;
+    private array $pointsForWinningCards = [];
     private array $cards = [];
 
     public function __construct(string $folder)
@@ -24,7 +25,7 @@ class Day04ConundrumSolver extends AbstractConundrumSolver
             // how many points the card is then worth and
             // which subsequent card copies they get us
             $wins = $this->wins($winningNumbers, $numbersOnCard);
-            $this->points += $this->computePointsForCard($wins);
+            $this->points += $this->pointsForWinningCards[$wins] ?? $this->computePointsForCard($wins);
             $this->cards[$id] = [
                 'copies' => 1,
                 'wins'   => 0 < $wins ? range($id + 1, $id + $wins) : [],
@@ -79,6 +80,8 @@ class Day04ConundrumSolver extends AbstractConundrumSolver
                 default => $pointsForCard *= 2
             };
         }
+
+        $this->pointsForWinningCards[$matching] = $pointsForCard;
 
         return $pointsForCard;
     }

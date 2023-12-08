@@ -59,9 +59,14 @@ abstract class AbstractConundrumSolver implements ConundrumSolverInterface
         return self::UNDETERMINED;
     }
 
+    protected function isTestMode(): bool
+    {
+        return $this->testMode;
+    }
+
     protected function getInput(int $part = self::PART_ONE): array|string
     {
-        return $this->testMode ? $this->getTestInput($part) : $this->input;
+        return $this->isTestMode() ? $this->getTestInput($part) : $this->input;
     }
 
     protected function getTestInput(int $part = self::PART_ONE)
@@ -78,7 +83,7 @@ abstract class AbstractConundrumSolver implements ConundrumSolverInterface
      */
     private function init(): void
     {
-        $this->testMode ? $this->initTestInputs() : $this->initInput();
+        $this->isTestMode() ? $this->initTestInputs() : $this->initInput();
     }
 
     private function initInput(): void

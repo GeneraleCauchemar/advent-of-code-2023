@@ -4,9 +4,49 @@ declare(strict_types=1);
 
 namespace App\Conundrum;
 
+use App\Entity\Day07\Hand;
+use App\Entity\Day07\Type;
+
 // /// Day 7: Camel Cards ///
 class Day07ConundrumSolver extends AbstractConundrumSolver
 {
+    private const TYPES = [
+        [
+            'name'           => 'high card',
+            'differentCards' => 5,
+            'maxRepetitions' => 1,
+        ],
+        [
+            'name'           => 'one pair',
+            'differentCards' => 4,
+            'maxRepetitions' => 2,
+        ],
+        [
+            'name'           => 'two pair',
+            'differentCards' => 3,
+            'maxRepetitions' => 2,
+        ],
+        [
+            'name'           => 'three of a kind',
+            'differentCards' => 3,
+            'maxRepetitions' => 3,
+        ],
+        [
+            'name'           => 'full house',
+            'differentCards' => 2,
+            'maxRepetitions' => 3,
+        ],
+        [
+            'name'           => 'four of a kind',
+            'differentCards' => 2,
+            'maxRepetitions' => 4,
+        ],
+        [
+            'name'           => 'five of a kind',
+            'differentCards' => 1,
+            'maxRepetitions' => 5,
+        ],
+    ];
     private const JOKER = 'J';
     private const CARDS = [
         'A'         => 14,
@@ -15,11 +55,25 @@ class Day07ConundrumSolver extends AbstractConundrumSolver
         self::JOKER => 11,
         'T'         => 10,
     ];
+
+    private array $types = [];
     private int $i = 0;
 
     public function __construct(string $folder)
     {
         parent::__construct($folder);
+    }
+
+    public function prepare(): void
+    {
+        foreach (self::TYPES as $key => $type) {
+            $this->types[] = new Type(
+                $type['name'],
+                $key + 1,
+                $type['differentCards'],
+                $type['maxRepetitions']
+            );
+        }
     }
 
     ////////////////
@@ -51,96 +105,83 @@ class Day07ConundrumSolver extends AbstractConundrumSolver
         $byTypes = [];
         $orderedHands = [];
 
-        // For each hand, compute its type
+        // Associate each hand to its type
         foreach ($this->getInput() as $line) {
             [$hand, $bid] = explode(' ', $line);
-            $type = $this->computeType($hand, $part);
-            $byTypes[$type][] = [$hand, $bid];
+            $hand = new Hand($hand, (int) $bid);
+
+            $this->associateType($hand, $part);
+
+            $byTypes[$hand->type->weight][] = $hand;
         }
 
         // Reorder from most to less powerful type
         krsort($byTypes);
 
         foreach ($byTypes as &$hands) {
-            // Reorder hands with same type from more to less powerfull
-            usort($hands, function (array $a, array $b) use ($part) {
-                // La fonction de comparaison doit retourner un entier inférieur à, égal à, ou supérieur à 0 si le premier
-                // argument est considéré comme, respectivement, inférieur à, égal à, ou supérieur au second.
+            // Reorder hands with same type from most to less powerful by comparing their cards
+            usort($hands, function (Hand $a, Hand $b) use ($part) {
                 for ($j = 0; $j < 5; $j++) {
-                    if ($a[0][$j] === $b[0][$j]) {
+                    if ($a->cards[$j] === $b->cards[$j]) {
                         continue;
                     }
 
-                    return $this->getCardStrength($a[0][$j], $part) < $this->getCardStrength($b[0][$j], $part) ? 1 : -1;
+                    return $this->compareCardsStrength($a->cards[$j], $b->cards[$j], $part);
                 }
 
                 return 0;
             });
 
-            // Combine hands with their rank, going from most to less valuable
-            $hands = array_combine(
-                range($this->i, $this->i - count($hands) + 1),
-                array_values($hands)
-            );
+            // Combine hands with their rank, going from most to less valuable and update next rank
+            $ranksInType = range($this->i, $this->i - count($hands) + 1);
+            $hands = array_combine($ranksInType, array_values($hands));
             $orderedHands += $hands;
             $this->i -= count($hands);
         }
 
         $winnings = 0;
 
-        array_walk($orderedHands, function ($value, $key) use (&$winnings) {
-            $winnings += $value[1] * $key;
+        array_walk($orderedHands, function (Hand $hand, int $rank) use (&$winnings) {
+            $winnings += $hand->bid * $rank;
         });
 
         return $winnings;
     }
 
-    private function computeType(string $hand, int $part = self::PART_ONE): int
+    private function associateType(Hand $hand, int $part = self::PART_ONE): void
     {
         // Group cards by number of repetitions
-        $hand = array_reverse(array_count_values(str_split($hand)), true);
-        $jokers = $hand[self::JOKER] ?? 0;
-        $differentCards = count($hand);
+        $cardsInHand = array_reverse(array_count_values(str_split($hand->cards)), true);
+        $jokers = $cardsInHand[self::JOKER] ?? 0;
 
-        // 5
-        if (1 === $differentCards) {
-            return 7;
-        }
+        // Transform jokers into the most useful card
+        if (self::PART_TWO === $part && 0 < $jokers) {
+            unset($cardsInHand[self::JOKER]);
 
-        // 4/1 (6) ou 3/2 (5)
-        if (2 === $differentCards) {
-            if (self::PART_TWO === $part && array_key_exists(self::JOKER, $hand)) {
-                // > 5
-                return 7;
+            // Hand with only joker cards
+            if (empty($cardsInHand)) {
+                $cardsInHand[self::JOKER] = 0;
             }
 
-            return 4 === max($hand) ? 6 : 5;
+            $maxKey = array_search(max($cardsInHand), $cardsInHand);
+            $cardsInHand[$maxKey] += $jokers;
         }
 
-        // 3/1/1 (4) ou 2/2/1 (3)
-        if (3 === $differentCards) {
-            // 1, 2 or 3 jokers available
-            if (self::PART_TWO === $part && 0 < $jokers) {
-                /**
-                 * si on a 1 joker, 1+3 > 4/1 OU 1+2 > 3/2
-                 * si on a 3 jokers, 3 + 1 > 4/1
-                 * si on a 2 jokers, 2 + 2 > 4/1
-                 */
+        $hand->groupedCards = $cardsInHand;
 
-                return 1 !== $jokers || 3 === max($hand) ? 6 : 5;
+        /** @var Type $type */
+        foreach ($this->types as $type) {
+            if ($type->isTypeOfHand($hand)) {
+                $hand->type = $type;
+
+                return;
             }
-
-            return 3 === max($hand) ? 4 : 3;
         }
+    }
 
-        // 2/1/1/1 (2)
-        if (4 === $differentCards) {
-            // > 3/1/1 or 2/1/1/1
-            return self::PART_TWO === $part && 0 < $jokers ? 4 : 2;
-        }
-
-        // > 2/1/1/1 or 1/1/1/1/1
-        return self::PART_TWO === $part && 1 === $jokers ? 2 : 1;
+    private function compareCardsStrength(string $cardA, string $cardB, int $part): int
+    {
+        return $this->getCardStrength($cardA, $part) < $this->getCardStrength($cardB, $part) ? 1 : -1;
     }
 
     private function getCardStrength(string $card, int $part = self::PART_ONE): int

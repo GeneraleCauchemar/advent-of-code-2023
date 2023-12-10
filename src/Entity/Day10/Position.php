@@ -6,8 +6,8 @@ use JMGQ\AStar\Node\NodeIdentifierInterface;
 
 class Position implements NodeIdentifierInterface
 {
+    public const START = 'S';
     private const GROUND = '.';
-    private const START = 'S';
     private const SYMBOLS_TO_ORIENTATION = [
         '|' => ['N', 'S'],
         '-' => ['W', 'E'],
@@ -27,7 +27,7 @@ class Position implements NodeIdentifierInterface
 
     public function getUniqueNodeId(): string
     {
-        return ((string) $this->row) . 'x' . ((string) $this->column) . 'x' . $this->symbol;
+        return ((string) $this->row) . 'x' . ((string) $this->column);
     }
 
     public function isEqualTo(Position $position): bool
@@ -73,5 +73,10 @@ class Position implements NodeIdentifierInterface
     private function getColumnDiff(Position $position, bool $absolute = false): int
     {
         return $absolute ? abs($this->column - $position->column) : $this->column - $position->column;
+    }
+
+    public function __toString(): string
+    {
+        return $this->getUniqueNodeId();
     }
 }

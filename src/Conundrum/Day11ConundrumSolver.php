@@ -11,7 +11,8 @@ use App\Entity\Day11\Position;
 class Day11ConundrumSolver extends AbstractConundrumSolver
 {
     private array $universe = [];
-    private array $galaxies = [];
+    private array $galaxiesBeforeExpansion = [];
+    private array $galaxiesAfterExpansion = [];
     private array $pairs = [];
 
     public function __construct(string $folder)
@@ -21,7 +22,8 @@ class Day11ConundrumSolver extends AbstractConundrumSolver
 
     public function prepare(): void
     {
-        $this->expand($this->getInput());
+        $this->mapBeforeExpansion();
+        $this->expand();
         $this->pinpointGalaxies();
         $this->createPairs();
     }
@@ -47,14 +49,34 @@ class Day11ConundrumSolver extends AbstractConundrumSolver
 
     public function partTwo(): mixed
     {
-        return self::UNDETERMINED;
+        $sum = 0;
+
+        foreach ($this->pairs as $pair) {
+            $pair = $this->computeNewPositions(...$pair);
+            $sum += $this->getManhattan(...$pair);
+        }
+
+        return $sum;
     }
 
     ////////////////
     // METHODS
     ////////////////
 
-    private function expand(array $input): void
+    private function mapBeforeExpansion(): void
+    {
+        $i = 1;
+
+        foreach ($this->getInput() as $row => $line) {
+            $galaxies = array_filter(str_split($line), fn(string $symbol) => '#' === $symbol);
+
+            foreach ($galaxies as $column => $galaxy) {
+                $this->galaxiesBeforeExpansion[$i] = new Position($row, $column, $i++);
+            }
+        }
+    }
+
+    private function expand(): void
     {
         // Expand lines then rotate to expand columns
         $input = $this->doExpand($this->getInput());
@@ -73,14 +95,16 @@ class Day11ConundrumSolver extends AbstractConundrumSolver
 
         foreach ($input as &$line) {
             $line = is_string($line) ? str_split($line) : $line;
-            $expanded[] = $line;
-
-            if ($this->isOnlyEmptySpace($line)) {
-                $expanded[] = $line;
-            }
+            $lines = array_fill(0, $this->getExpansionFactor($line), $line);
+            $expanded = array_merge($expanded, $lines);
         }
 
         return $expanded;
+    }
+
+    private function getExpansionFactor(array $values): int
+    {
+        return $this->isOnlyEmptySpace($values) ? 1 : 2;
     }
 
     private function isOnlyEmptySpace(array $values): bool
@@ -98,22 +122,24 @@ class Day11ConundrumSolver extends AbstractConundrumSolver
 
     private function pinpointGalaxies(): void
     {
+        $i = 1;
+
         foreach ($this->universe as $row => $line) {
             $galaxies = array_filter($line, fn(string $symbol) => '#' === $symbol);
 
             foreach ($galaxies as $column => $galaxy) {
-                $this->galaxies[] = new Position($row, $column);
+                $this->galaxiesAfterExpansion[$i++] = new Position($row, $column, $i);
             }
         }
     }
 
     private function createPairs(): void
     {
-        for ($i = 0; $i < count($this->galaxies); $i++) {
-            for ($j = $i + 1; $j < count($this->galaxies); $j++) {
+        for ($i = 0; $i < count($this->galaxiesAfterExpansion); $i++) {
+            for ($j = $i + 1; $j < count($this->galaxiesAfterExpansion); $j++) {
                 $this->pairs[] = [
-                    $this->galaxies[$i],
-                    $this->galaxies[$j],
+                    $this->galaxiesAfterExpansion[$i + 1],
+                    $this->galaxiesAfterExpansion[$j + 1],
                 ];
             }
         }
@@ -124,10 +150,29 @@ class Day11ConundrumSolver extends AbstractConundrumSolver
         return abs($from->column - $to->column) + abs($from->row - $to->row);
     }
 
-    private function print(array $input): void
+    private function computeNewPositions(Position $from, Position $to): array
     {
-        foreach ($input as $line) {
-            echo implode('', $line) . "\n";
-        }
+        $beforeFrom = $this->galaxiesBeforeExpansion[$from->id];
+        $beforeTo = $this->galaxiesBeforeExpansion[$to->id];
+
+        return [
+            new Position(
+                $this->computeDiff($beforeFrom->row, $from->row),
+                $this->computeDiff($beforeFrom->column, $from->column),
+                $from->id
+            ),
+            new Position(
+                $this->computeDiff($beforeTo->row, $to->row),
+                $this->computeDiff($beforeTo->column, $to->column),
+                $from->id
+            ),
+        ];
+    }
+
+    private function computeDiff(int $before, int $after): int
+    {
+        $diff = abs($after - $before);
+
+        return $before + ($diff * 1000000 - $diff);
     }
 }

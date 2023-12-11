@@ -78,6 +78,13 @@ abstract class AbstractConundrumSolver implements ConundrumSolverInterface
         return [];
     }
 
+    protected function print(array $input): void
+    {
+        foreach ($input as $line) {
+            echo implode('', $line) . "\n";
+        }
+    }
+
     /**
      * @throws InputFileNotFoundException
      */
